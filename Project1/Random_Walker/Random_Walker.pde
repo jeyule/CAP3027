@@ -9,13 +9,13 @@ Walker walker;
 boolean running = false;
 boolean gradual = false;
 
-//int iterations = 10000;
 int counter = 0;
-int stepRate = 100;
 int stepCount = 0;
 
 // default number of iterations
 int iterations = 1000;
+//default step rate (steps per frame)
+int stepRate = 1;
 
 void setup() {
   size(800, 800);
@@ -24,20 +24,33 @@ void setup() {
   
   cp5 = new ControlP5(this);
   
+  PFont font = createFont("Arial Narrow Bold", 20);
+  
   // create start button
   cp5.addButton("START")
-    .setPosition(50, 50)
-    .setSize(80, 40);
+    .setPosition(30, 50)
+    .setSize(80, 40)    
+    .setFont(font);
     
   // create the gradual step toggle
   cp5.addToggle("gradual")
-    .setPosition(150, 50)
-    .setSize(20, 20);
+    .setPosition(120, 50)
+    .setSize(20, 20)
+    .setFont(font);
     
   // the iteration number slider
   cp5.addSlider("iterations")
-    .setPosition(200, 50)
-    .setRange(1000, 500000);
+    .setPosition(180, 50)
+    .setSize(500, 40)
+    .setRange(1000, 500000)
+    .setFont(font);
+    
+  // the ste count slider
+  cp5.addSlider("stepRate")
+    .setPosition(180, 95)
+    .setSize(500, 40)
+    .setRange(1, 1000)
+    .setFont(font);
 }
 
 void draw() {  
