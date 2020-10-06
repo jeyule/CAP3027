@@ -1,41 +1,28 @@
-// program driver
+// the main driver program
 
 import controlP5.*;
 
 ControlP5 cp5;
 
-// the main random walker object
-Walker walker;
-
-// initial states
-boolean running = false;
-boolean gradual = false;
-boolean colors = false;
-boolean constrain = true;
-boolean terrain = true;
-boolean stroke = false;
-boolean seed = false;
-int seedValue = 0;
-
 // the shape menu
 DropdownList shapeMenu;
-
 // seed value textfield
 Textfield seed_value;
 
-// counters to keep track of iterations and steps
+boolean running = false;
+
+int iterationsControl = 100;
+int stepRateControl = 1;
+int stepSizeControl = 10;
+float stepScaleControl = 1.0;
+boolean constrainControl = true;
+boolean terrainControl = true;
+boolean outlineControl = false;
+boolean seedControl = false;
+int seedValueControl = 0;
 int counter = 0;
-int stepCount = 0;
 
-// default number of iterations
-int iterations = 1000;
-//default step rate (steps per frame)
-int stepRate = 1;
-
-// the size of a step (shape size)
-int stepSize = 10;
-// modifier for the size of a step
-float stepScale = 1.0;
+BaseWalker walker = null;
 
 void setup() {
   
@@ -43,6 +30,10 @@ void setup() {
   size(1200, 800);
 
   background(138, 185, 207);
+  
+  // draw the UI background
+  fill(128);
+  rect(0, 0, 200, 800);
   
   cp5 = new ControlP5(this);
   
@@ -65,7 +56,7 @@ void setup() {
     .addItem("HEXAGONS", 1);
     
   // the iteration number slider
-  cp5.addSlider("iterations")
+  cp5.addSlider("iterationsControl")
     .setPosition(20, 225)
     .setSize(160, 30)
     .setRange(100, 50000)
@@ -75,7 +66,7 @@ void setup() {
     .setPosition(20, 213);
     
   // the step count slider
-  cp5.addSlider("stepRate")
+  cp5.addSlider("stepRateControl")
     .setPosition(20, 275)
     .setSize(160, 30)
     .setRange(1, 1000)
@@ -85,7 +76,7 @@ void setup() {
     .setPosition(20, 263);
     
   // step size slider
-  cp5.addSlider("stepSize")
+  cp5.addSlider("stepSizeControl")
     .setPosition(20, 335)
     .setSize(160, 30)
     .setRange(10, 30)
@@ -95,7 +86,7 @@ void setup() {
     .setPosition(20, 323);
     
   // step scale slider
-  cp5.addSlider("stepScale")
+  cp5.addSlider("stepScaleControl")
     .setPosition(20, 385)
     .setSize(160, 30)
     .setRange(1.0, 1.5)
@@ -105,67 +96,78 @@ void setup() {
     .setPosition(20, 373);    
     
   // toggle to constrain to viewable area
-  cp5.addToggle("constrain")
+  cp5.addToggle("constrainControl")
     .setPosition(20, 440)
-    .setSize(30, 30);
+    .setSize(30, 30)
+    .getCaptionLabel().setVisible(false);
+  cp5.addTextlabel("Constrain Control")
+    .setText("Constrain")
+    .setPosition(16, 472);
     
-  // toggle to use terrain 
-  cp5.addToggle("terrain")
+  // toggle to use terrain
+  cp5.addToggle("terrainControl")
     .setPosition(20, 490)
-    .setSize(30, 30);
+    .setSize(30, 30)
+    .getCaptionLabel().setVisible(false);
+  cp5.addTextlabel("Terrain Control")
+    .setText("Terrain")
+    .setPosition(16, 522);
     
   // toggle to use stroke
-  cp5.addToggle("stroke")
+  cp5.addToggle("outlineControl")
     .setPosition(20, 540)
-    .setSize(30, 30);
+    .setSize(30, 30)
+    .getCaptionLabel().setVisible(false);
+  cp5.addTextlabel("Outline Control")
+    .setText("Stroke")
+    .setPosition(16, 572);
     
   // toggle to use random seed
-  cp5.addToggle("seed")
+  cp5.addToggle("seedControl")
     .setPosition(20, 590)
-    .setSize(30, 30);
+    .setSize(30, 30)
+    .getCaptionLabel().setVisible(false);
+  cp5.addTextlabel("Seed Control")
+    .setText("Seed")
+    .setPosition(16, 622);
     
   // text field for the seed value
   seed_value = cp5.addTextfield("seed_value")
     .setPosition(80, 590)
     .setSize(100, 30)
-    .setFocus(true)
     .setInputFilter(ControlP5.INTEGER);
 }
 
 void draw() {  
   
-  // draw the UI background
-  fill(128);
-  rect(0, 0, 200, 800);
+  if (seedControl && !seed_value.getText().trim().isEmpty()) {
+    seedValueControl = Integer.parseInt(seed_value.getText());
+  }
   
-  if (seed && !seed_value.getText().trim().isEmpty()) {
-    seedValue = Integer.parseInt(seed_value.getText());
+  if (walker != null) {
+    update();
   }
   
   // loop for the random walk
   if (running) {
-
-    // if gradual option selected, updates at the set step count
-    if (gradual) {
-      stepCount = stepRate;
-    } else { // otherwise updates all at once at the end
-      stepCount = iterations - counter; // substract to get how many iterations are left
-    }
+    
+    walker.stepCount = walker.stepRate;
     
     // take the set number of steps for this update
     int i = 0;
-    while (i < stepCount) {
+    while (i < walker.stepCount) {
       walker.step();
       i++;
       
       counter++;
   
       // set number of iterations reached, so stop
-      if (counter > iterations-1) {
+      if (counter > walker.iterations-1) {
         running = false;
         counter = 0;
         break;
       }
+      
     }
     
     // render the new points
@@ -176,13 +178,44 @@ void draw() {
     walker.pointsX.clear();
     walker.pointsY.clear();
     walker.stepNumbers.clear();
-       
   }
+  
+  fill(128);
+  rect(0, 0, 200, 800);
+
 }
 
 // start walk once START button clicked
 public void START() {
-  walker = new Walker(iterations);
+  
+  if (shapeMenu.getValue() == 0) {
+    walker = new SquareWalker(iterationsControl, stepRateControl);
+  } else if (shapeMenu.getValue() == 1) {
+    walker = new HexagonWalker(iterationsControl, stepRateControl);
+  }
+  
+  update();
+  
+  if (walker.seed) {
+    randomSeed(walker.seedValue);
+  } else {
+    randomSeed(millis());
+  }
+  
   background(138, 185, 207);
+  fill(128);
+  rect(0, 0, 200, 800);
   running = true;
+}
+
+void update() {
+  walker.constrain = constrainControl;
+  walker.terrain = terrainControl;
+  walker.outline = outlineControl;
+  walker.seed = seedControl;
+  walker.seedValue = seedValueControl;
+  walker.iterations = iterationsControl;
+  walker.stepRate = stepRateControl;
+  walker.stepSize = stepSizeControl;
+  walker.stepScale = stepScaleControl;
 }
